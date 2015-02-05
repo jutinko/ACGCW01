@@ -7,7 +7,7 @@ Year: 2013
 #include <math.h>
 #include "loadPNM.h"
 
-//#define PI 3.14159265358979323
+#define PI 3.14159265358979323
 #define uint unsigned int
 
 #include <iostream>
@@ -149,6 +149,12 @@ void LoadPFMAndSavePPM(const char *image_in, const char *image_out)
 
 }
 
+//Center wighting function
+float w(float x) 
+{
+  return sin(PI*x);
+}
+
 int main(int argc, char** argv)
 {
 
@@ -180,5 +186,3 @@ int main(int argc, char** argv)
  
   return 0;
 }
-
-
