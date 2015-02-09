@@ -27,8 +27,82 @@ float w(float x)
 {
   //return sin(PI*x);
   if(x <= 0.5)
+  {
     return 2*x;
+  }
   return -2*x+2;
+}
+
+float findMaxIntensity(float* image_in, uint width, uint height, uint numComponents)
+{
+  float result = -1;
+  float currValue;
+  for(uint i = 0; i < height; ++i)
+  {
+    for(uint j = 0; j < width; ++j )
+    {
+      currValue = 0;
+      for(uint k = 0; k < numComponents; ++k)
+      {
+        uint index = i*width*numComponents + j*numComponents + k; //index within the image
+        currValue += image_in[index];
+      }
+      if(currValue/numComponents > result)
+      {
+        result = currValue/numComponents;
+      }
+    }
+  }
+  return result;
+}
+
+// Tone Maps a PFM image into range 0-1
+void toneMapper(float* image_in, uint width, uint height, uint numComponents)
+{
+  float maxIntensity = findMaxIntensity(image_in, width, height, numComponents);
+  for ( uint i = 0 ; i < height ; ++i ) // height
+  {
+    for ( uint j = 0 ; j < width ; ++j ) // width
+    {
+      for ( uint k = 0 ; k < numComponents ; ++k ) // color channels - 3 for RGB images
+      {
+        uint index = i*width*numComponents + j*numComponents + k; //index within the image
+        image_in[index] /= maxIntensity;
+      }
+    }
+  }
+}
+
+void NExposureScale(int n, float* image_in, uint width, uint height, uint numComponents)
+{
+  int stops = pow(2, n);
+  for ( uint i = 0 ; i < height ; ++i ) // height
+  {
+    for ( uint j = 0 ; j < width ; ++j ) // width
+    {
+      for ( uint k = 0 ; k < numComponents ; ++k ) // color channels - 3 for RGB images
+      {
+        uint index = i*width*numComponents + j*numComponents + k; //index within the image
+        float scaledValue = image_in[index]*stops;
+        image_in[index] = scaledValue > 1.0f ? 1.0f : scaledValue;
+      }
+    }
+  }
+}
+
+void gammaFunc(float gamma, float* image_in, uint width, uint height, uint numComponents)
+{
+  for ( uint i = 0 ; i < height ; ++i ) // height
+  {
+    for ( uint j = 0 ; j < width ; ++j ) // width
+    {
+      for ( uint k = 0 ; k < numComponents ; ++k ) // color channels - 3 for RGB images
+      {
+        uint index = i*width*numComponents + j*numComponents + k; //index within the image
+        image_in[index] = pow(image_in[index], 1/gamma);
+      }
+    }
+  }
 }
 
 void applyFunctionOnAllPixelsPFM(vector<float*> images_in, float* image_out, 
@@ -88,7 +162,10 @@ void LoadPPMAndSavePFM(const char *image_in, const char *image_out)
 
 void LoadPFMAndSavePPM(const char *image_in, const char *image_out)
 {
-  float *img_in = loadPFM(image_in, width, height, numComponents);
+  float* img_in = loadPFM(image_in, width, height, numComponents);
+  toneMapper(img_in, width, height, numComponents);
+  NExposureScale(10, img_in, width, height, numComponents);
+  gammaFunc(2.2, img_in, width, height, numComponents);
   unsigned char *img_out = new unsigned char [width*height*numComponents];
 
   for ( uint i = 0 ; i < height ; ++i ) // height
@@ -98,7 +175,6 @@ void LoadPFMAndSavePPM(const char *image_in, const char *image_out)
       for ( uint k = 0 ; k < numComponents ; ++k ) // color channels - 3 for RGB images
       {
         uint index = i*width*numComponents + j*numComponents + k; //index within the image
-
         //typecast 0.0f -> 1.0f values to the 0 - 255 range 
         img_out[index] = static_cast<unsigned char>(img_in[index]*255.0f); //typecast all color channels of each pixel
                 
@@ -192,9 +268,12 @@ void LoadAndSavePFM(vector<const char*> images_in, const char *image_out)
   }
   float *img_out = new float [width*height*numComponents];
   applyFunctionOnAllPixelsPFM(imgs_in, img_out, width, height, numComponents, returnHDRCoponentPFM);
+
   WritePFM(image_out, width, height, numComponents, img_out);
+
   delete img_out;
 }
+
 
 int main(int argc, char** argv)
 {
@@ -219,6 +298,8 @@ int main(int argc, char** argv)
       imgs_in.push_back(argv[i]);
     }
     LoadAndSavePFM(imgs_in, argv[argc-1]); //Loads and saves a PFM file
+    const char* outName = "ppmout.ppm";
+    LoadPFMAndSavePPM(argv[argc-1], outName);
   }  
   return 0;
 }
