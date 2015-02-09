@@ -5,13 +5,18 @@ Year: 2013
 #include <cstdio>
 #include <stdlib.h>
 #include <vector>
-#include <math.h>
+#include <cmath>
 #include "loadPNM.h"
 
 #define PI 3.14159265358979323
 #define LOW_IGNORE_THRESH 0.005
 #define HIGH_IGNORE_THRESH 0.920
 #define TWO_STOP 4
+#define EXPOSUREFACTOR 10
+#define GAMMA 2.2
+#define RADIUS 255
+#define DIAMETER 511
+#define DIMENSION 3
 #define uint unsigned int
 
 #include <iostream>
@@ -21,6 +26,23 @@ using namespace std;
 unsigned int width;
 unsigned int height;
 unsigned int numComponents;
+
+bool isInCircle(uint width, uint height)
+{
+  uint x = RADIUS-width > 0 ? RADIUS-width : width-RADIUS;
+  uint y = RADIUS-height > 0 ? RADIUS-height : height-RADIUS;
+  return (x*x+y*y < RADIUS*RADIUS);
+}
+
+float getX(int width)
+{
+  return (float)(width-RADIUS)/RADIUS;
+}
+
+float getY(int height)
+{
+  return (float)(height-RADIUS)/RADIUS;
+}
 
 //Center wighting function
 float w(float x) 
@@ -121,7 +143,8 @@ void applyFunctionOnAllPixelsPFM(vector<float*> images_in, float* image_out,
   }
 }
 
-void applyFunctionOnAllPixelsPPM(vector<unsigned char*> images_in, unsigned char* image_out, 
+void applyFunctionOnAllPixelsPPM(vector<unsigned char*> images_in, 
+    unsigned char* image_out,
     uint width, uint height, uint numComponents, 
     char (*func)(vector<unsigned char*>, uint))
 {
@@ -133,6 +156,27 @@ void applyFunctionOnAllPixelsPPM(vector<unsigned char*> images_in, unsigned char
       {
         uint index = i*width*numComponents + j*numComponents + k; //index within the image
         image_out[index] = func(images_in, index);
+      }
+    }
+  }
+}
+
+void applyFunctionOnAllPixelsPPMFromPFM(vector<float*> images_in, 
+    unsigned char* image_out,
+    uint width, uint height, uint numComponents, 
+    char (*func)(vector<float*>, uint))
+{
+  for ( uint i = 0 ; i < height ; ++i ) // height
+  {
+    for ( uint j = 0 ; j < width ; ++j ) // width
+    {
+      for ( uint k = 0 ; k < numComponents ; ++k ) // color channels - 3 for RGB images
+      {
+        uint index = i*width*numComponents + j*numComponents + k; //index within the image
+        if(isInCircle(j, i))
+        {
+          image_out[index] = func(images_in, index);
+        }
       }
     }
   }
@@ -151,7 +195,7 @@ void LoadPPMAndSavePFM(const char *image_in, const char *image_out)
       {
         uint index = i*width*numComponents + j*numComponents + k; //index within the image
 
-        //typecast 0 - 255 values to the 0.0f -> 1.0f range 
+        //typecast 0 - RADIUS values to the 0.0f -> 1.0f range 
         img_out[index] = static_cast<float>(img_in[index])/255.0f; //typecast all color channels of each pixel
                 
       }
@@ -164,8 +208,8 @@ void LoadPFMAndSavePPM(const char *image_in, const char *image_out)
 {
   float* img_in = loadPFM(image_in, width, height, numComponents);
   toneMapper(img_in, width, height, numComponents);
-  NExposureScale(10, img_in, width, height, numComponents);
-  gammaFunc(2.2, img_in, width, height, numComponents);
+  NExposureScale(EXPOSUREFACTOR, img_in, width, height, numComponents);
+  gammaFunc(GAMMA, img_in, width, height, numComponents);
   unsigned char *img_out = new unsigned char [width*height*numComponents];
 
   for ( uint i = 0 ; i < height ; ++i ) // height
@@ -184,28 +228,61 @@ void LoadPFMAndSavePPM(const char *image_in, const char *image_out)
   WritePNM(image_out, width, height, numComponents, img_out);
 }
 
+vector<float> getSurfaceNormal(float x, float y)
+{
+  vector<float> normal;
+  float z = sqrt(1-(x*x+y*y));
+  normal.push_back(x);
+  normal.push_back(y);
+  normal.push_back(z);
+  return normal;
+}
+
+vector<float> getReflectanceVector(vector<float> normal, vector<float> v)
+{
+  float nDotV = 0;
+  for(int i = 0; i < DIMENSION; ++i)
+  {
+    nDotV += normal[i]*v[i];
+  }
+
+  vector<float> result;
+  for(int i = 0; i < DIMENSION; ++i)
+  {
+    result.push_back(2*nDotV*normal[i]-v[i]);
+  }
+  return result;
+}
+
 void CreateAndSavePFM(const char *image_out)
 {
-  width = 511; // set size of image to 511x511 pixels
-  height = 511;
+  width = DIAMETER; // set size of image to DIAMETERxDIAMETER pixels
+  height = DIAMETER;
   numComponents = 3;
   
   float *img_out = new float [width*height*numComponents];
 
+  vector<float> normal;
+  vector<float> r;
+  vector<float> v;
+  v.push_back(0.0f);
+  v.push_back(0.0f);
+  v.push_back(1.0f);
   for ( uint i = 0 ; i < height ; ++i ) // height
   {
     for ( uint j = 0 ; j < width ; ++j ) // width
     {
+      normal = getSurfaceNormal(getX(j), getY(i));
+      r = getReflectanceVector(normal, v);
       for ( uint k = 0 ; k < numComponents ; ++k ) // color channels - 3 for RGB images
       {
         uint index = i*width*numComponents + j*numComponents + k; //index within the image
-
-        //set image to white
-        img_out[index] = 1.0f; //RGB all set to white
+        img_out[index] = isInCircle(i, j) ? r[k] : 0.0f;
       }
     }
   }
   WritePFM(image_out, width, height, numComponents, img_out);
+  delete img_out;
 }
 
 char returnSameValuePPM(vector<unsigned char*> imgs_in, uint index)
@@ -213,14 +290,20 @@ char returnSameValuePPM(vector<unsigned char*> imgs_in, uint index)
   return imgs_in[0][index];
 }
 
-void LoadAndSavePPM(const char *image_in, const char *image_out)
+char reflectanceToPPM(vector<float*> imgs_in, uint index)
 {
-  unsigned char *img_in = loadPNM(image_in, width, height, numComponents);
+  return (imgs_in[0][index]+1.0f)/2*255;
+}
+
+void reflectanceSphereSavePPM(const char *image_in, const char *image_out)
+{
+  float* img_in = loadPFM(image_in, width, height, numComponents);
   unsigned char *img_out = new unsigned char [width*height*numComponents];
-  vector<unsigned char*> imgs_in;
+  vector<float*> imgs_in;
   imgs_in.push_back(img_in);
-  applyFunctionOnAllPixelsPPM(imgs_in, img_out, width, height, numComponents, returnSameValuePPM);
+  applyFunctionOnAllPixelsPPMFromPFM(imgs_in, img_out, width, height, numComponents, reflectanceToPPM);
   WritePNM(image_out, width, height, numComponents, img_out);
+  cout << "here ??" << endl;
   delete img_out;
 }
 
@@ -258,7 +341,7 @@ float returnHDRCoponentPFM(vector<float*> imgs_in, uint index)
   return result;
 }
 
-void LoadAndSavePFM(vector<const char*> images_in, const char *image_out)
+void processHDRAndSavePFM(vector<const char*> images_in, const char *image_out)
 {
   vector<float*> imgs_in;
   for(vector<const char*>::iterator i = images_in.begin(); i != images_in.end();
@@ -274,6 +357,16 @@ void LoadAndSavePFM(vector<const char*> images_in, const char *image_out)
   delete img_out;
 }
 
+void XYZtoRGB(const char* image_in, const char *image_out)
+{
+  float* img_in = loadPFM(image_in, width, height, numComponents);
+  float *img_out = new float [width*height*numComponents];
+
+
+  WritePFM(image_out, width, height, numComponents, img_out);
+
+  delete img_out;
+}
 
 int main(int argc, char** argv)
 {
@@ -286,20 +379,21 @@ int main(int argc, char** argv)
     return 0;
   }        
 
-  if(argc == 2)
-  {  
-    CreateAndSavePFM(argv[1]); //Creates and saves a PFM
-  } else 
-  {  
-    vector<const char*> imgs_in;
-    //The last parameter is the output file
-    for(int i = 1; i < argc-1; ++i)
-    {
-      imgs_in.push_back(argv[i]);
-    }
-    LoadAndSavePFM(imgs_in, argv[argc-1]); //Loads and saves a PFM file
-    const char* outName = "ppmout.ppm";
-    LoadPFMAndSavePPM(argv[argc-1], outName);
-  }  
+  //if(argc == 2)
+  //{  
+    reflectanceSphereSavePPM(argv[1], argv[2]); //Creates and saves a PFM
+  //} 
+ // else 
+ // {  
+ //   vector<const char*> imgs_in;
+ //   //The last parameter is the output file
+ //   for(int i = 1; i < argc-1; ++i)
+ //   {
+ //     imgs_in.push_back(argv[i]);
+ //   }
+ //   processHDRAndSavePFM(imgs_in, argv[argc-1]); //Loads and saves a PFM file
+ //   const char* outName = "ppmout.ppm";
+ //   LoadPFMAndSavePPM(argv[argc-1], outName);
+ // }  
   return 0;
 }
