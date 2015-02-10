@@ -1,0 +1,118 @@
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
+%----------------------------------------------------------------------------------------
+
+\documentclass{article}
+
+\usepackage{lastpage} % Required to determine the last page for the footer
+\usepackage{extramarks} % Required for headers and footers
+\usepackage{graphicx} % Required to insert images
+\usepackage{lipsum} % Used for inserting dummy 'Lorem ipsum' text into the template
+\usepackage{hyperref}
+
+\linespread{1.1} % Line spacing
+\usepackage[total={6in, 9in}]{geometry}
+
+\setlength\parindent{0pt} % Removes all indentation from paragraphs
+
+
+
+\begin{document}
+\title{Advanced Computer Graphics\\ Coursework 1}
+\author{Terence Tse, Zhou Yu \\ Team JT}
+\maketitle
+\newpage
+
+\section{Assembling a HDR image}
+
+\subsection{Our center-weighting function}
+Our center-weighting funcion, \texttt{w}, can be defined as below:
+\begin{verbatim}
+Fucking sick m8
+\end{verbatim}
+The reason we chose our function to be this way was
+
+\subsection{Image after loading and weighting}
+\begin{center}
+	\begin{figure}[H]
+		\begin{center}
+			\includegraphics[scale=0.33]{}
+			\caption{HDR image, f.pfm}
+		\end{center}
+	\end{figure}
+\end{center}
+
+\subsubsection{ Dynamic Range of scene} 
+%% ratio of brightest pixels to the dimmest
+
+\subsection{Tone Mapping}
+\begin{center}
+	\begin{figure}[H]
+		\begin{center}
+			\includegraphics[scale=0.33]{}
+			\caption{HDR image after Tone mapping, f.ppm}
+		\end{center}
+	\end{figure}
+\end{center}
+
+\subsubsection{Choosing Parameters}
+After investigation into the appearances of the resulting pictures 
+by changing the number of stops to apply to the image, we chose
+the value, \texttt{n}, to be XXXXXXXXXXXXXXXX. 
+
+In addition, we checked out the appearance of the image under 
+different values of gamma correction. We tested the values suggested
+in the specification as well as XXXXXXXXXXXXXXX. We decided to leave
+our gamma as XXXXXXXXXXXXXX.
+
+\section{Implmenting simple Image Based Lighting}
+\subsection{Creating the surface normal picture}
+\begin{center}
+	\begin{figure}[H]
+		\begin{center}
+			\includegraphics[scale=0.33]{}
+			\caption{Surface Normals (XYZ \Rightarrow RGB), something.pfm}
+		\end{center}
+	\end{figure}
+\end{center}
+
+\subsubsection{Calculating reflectance vector picture}
+\begin{center}
+	\begin{figure}[H]
+		\begin{center}
+			\includegraphics[scale=0.33]{}
+			\caption{Reflectance Vectors (XYZ \Rightarrow RGB), something.pfm}
+		\end{center}
+	\end{figure}
+\end{center}
+
+\subsubsection{Converting to ppm}
+\begin{center}
+	\begin{figure}[H]
+		\begin{center}
+			\includegraphics[scale=0.33]{}
+			\caption{Reflectance Vectors as PPM, something.ppm}
+		\end{center}
+	\end{figure}
+\end{center}
+
+\subsubsection{Applying the lighting environment of Grace Cathedral}
+\begin{center}
+	\begin{figure}[H]
+		\begin{center}
+			\includegraphics[scale=0.33]{}
+			\caption{Grace Cathedral lighting has been applied, GC.pfm}
+		\end{center}
+	\end{figure}
+\end{center}
+
+\begin{center}
+	\begin{figure}[H]
+		\begin{center}
+			\includegraphics[scale=0.33]{}
+			\caption{Grace Cathedral lighting has been applied, GeorgiannaChan.pfm}
+		\end{center}
+	\end{figure}
+\end{center}
+
+\end{document}
