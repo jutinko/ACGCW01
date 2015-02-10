@@ -207,9 +207,9 @@ void LoadPPMAndSavePFM(const char *image_in, const char *image_out)
 void LoadPFMAndSavePPM(const char *image_in, const char *image_out)
 {
   float* img_in = loadPFM(image_in, width, height, numComponents);
-  toneMapper(img_in, width, height, numComponents);
-  NExposureScale(EXPOSUREFACTOR, img_in, width, height, numComponents);
-  gammaFunc(GAMMA, img_in, width, height, numComponents);
+  //toneMapper(img_in, width, height, numComponents);
+  //NExposureScale(EXPOSUREFACTOR, img_in, width, height, numComponents);
+  //gammaFunc(GAMMA, img_in, width, height, numComponents);
   unsigned char *img_out = new unsigned char [width*height*numComponents];
 
   for ( uint i = 0 ; i < height ; ++i ) // height
@@ -303,13 +303,56 @@ void reflectanceSphereSavePPM(const char *image_in, const char *image_out)
   imgs_in.push_back(img_in);
   applyFunctionOnAllPixelsPPMFromPFM(imgs_in, img_out, width, height, numComponents, reflectanceToPPM);
   WritePNM(image_out, width, height, numComponents, img_out);
-  cout << "here ??" << endl;
   delete img_out;
 }
 
 float returnSameValuePFM(vector<float*> imgs_in, uint index)
 {
   return imgs_in[0][index];
+}
+
+void mapLatLongToSphere(const char* reflectance, const char* latLongMap, 
+    const char* image_out)
+{
+  uint widthRef, heightRef, numComponentsRef;
+  uint widthLat, heightLat, numComponentsLat;
+
+  float* reflectance_f = loadPFM(reflectance, widthRef, heightRef, numComponentsRef);
+  float* latLongMap_f = loadPFM(latLongMap, widthLat, heightLat, numComponentsLat);
+  float* img_out = new float[widthRef*heightRef*numComponentsRef];
+
+  for ( uint i = 0 ; i < heightRef ; ++i ) // height
+  {
+    for ( uint j = 0 ; j < widthRef ; ++j ) // width
+    {
+      if(isInCircle(j, i))
+      {
+        vector<float> xyz;
+        for ( uint k = 0 ; k < numComponentsRef ; ++k ) // color channels - 3 for RGB images
+        {
+          uint index = i*widthRef*numComponentsRef + j*numComponentsRef + k; 
+          xyz.push_back(reflectance_f[index]);
+        }
+        float theta = acos(xyz[1])/PI;
+        float phi = (atan2(xyz[2], xyz[0])+PI)/(2*PI);
+        uint mappedW = phi*widthLat;
+        uint mappedH = theta*heightLat;
+        float value;
+        for ( uint k = 0 ; k < numComponentsRef ; ++k ) 
+        {
+          uint index = i*widthRef*numComponentsRef + j*numComponentsRef + k; 
+
+          value = latLongMap_f[mappedH*widthLat*numComponentsLat+
+            mappedW*numComponentsLat+k];
+          img_out[index] = value > 1.0f ? 1.0f : value;
+        }
+      }
+    }
+  }
+  cout << "befoer triple forloop" << endl;
+
+  WritePFM(image_out, widthRef, heightRef, numComponentsRef, img_out);
+  delete img_out;
 }
 
 //This method assumes that the order of images in the given vector
@@ -357,17 +400,6 @@ void processHDRAndSavePFM(vector<const char*> images_in, const char *image_out)
   delete img_out;
 }
 
-void XYZtoRGB(const char* image_in, const char *image_out)
-{
-  float* img_in = loadPFM(image_in, width, height, numComponents);
-  float *img_out = new float [width*height*numComponents];
-
-
-  WritePFM(image_out, width, height, numComponents, img_out);
-
-  delete img_out;
-}
-
 int main(int argc, char** argv)
 {
   cerr<<"main invoked: arguments - <image_out (.pfm)> "<<endl;
@@ -381,7 +413,8 @@ int main(int argc, char** argv)
 
   //if(argc == 2)
   //{  
-    reflectanceSphereSavePPM(argv[1], argv[2]); //Creates and saves a PFM
+    //mapLatLongToSphere(argv[1], argv[2], argv[3]); //Creates and saves a PFM
+    LoadPFMAndSavePPM(argv[1], argv[2]);
   //} 
  // else 
  // {  
