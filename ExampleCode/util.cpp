@@ -37,7 +37,7 @@ vector<float> getSurfaceNormal(float x, float y)
   return normal;
 }
 
-vector<float> getReflectanceVector(vector<float> normal, vector<float> v)
+vector<float> getReflectanceVector(vector<float>& normal, vector<float>& v)
 {
   float nDotV = 0;
   for(int i = 0; i < DIMENSION; ++i)
@@ -56,6 +56,7 @@ vector<float> getReflectanceVector(vector<float> normal, vector<float> v)
 float findMaxIntensity(float* image_in, unsigned int width, unsigned int height, unsigned int numComponents)
 {
   float result = -1;
+  float min = 10;
   float currValue;
   for(unsigned int i = 0; i < height; ++i)
   {
@@ -70,6 +71,10 @@ float findMaxIntensity(float* image_in, unsigned int width, unsigned int height,
       if(currValue/numComponents > result)
       {
         result = currValue/numComponents;
+      }
+      if(currValue/numComponents < min)
+      {
+        min = currValue/numComponents;
       }
     }
   }
@@ -121,6 +126,22 @@ void applyFunctionOnAllPixelsPFM(vector<float*> images_in, float* image_out,
   }
 }
 
+void applyFunctionOnAllPixelsPFMSingle(float* image_in, float* image_out, 
+    unsigned int width, unsigned int height, unsigned int numComponents, float (*func)(float))
+{
+  for(unsigned int i = 0; i < height; ++i)
+  {
+    for(unsigned int j = 0; j < width; ++j)
+    {
+      for(unsigned int k = 0; k < numComponents; ++k)
+      {
+        unsigned int index = i*width*numComponents + j*numComponents + k;
+        image_out[index] = func(image_in[index]);
+      }
+    }
+  }
+}
+
 void applyFunctionOnAllPixelsPPM(vector<unsigned char*> images_in, 
     unsigned char* image_out,
     unsigned int width, unsigned int height, unsigned int numComponents, 
@@ -162,6 +183,11 @@ char exposureGamma(float value)
   return gammaFunc(NExposureScale(value))*255.0f;
 }
 
+float exposureGammaPFM(float value)
+{
+  return gammaFunc(NExposureScale(value));
+}
+
 char doNothing(float value)
 {
   return value*255.0f;
@@ -176,7 +202,7 @@ void LoadPFMSavePPM(const char *image_in, const char *image_out, char (*func)(fl
 {
   unsigned int width, height, numComponents;
   float* img_in = loadPFM(image_in, width, height, numComponents);
-  //toneMapper(img_in, width, height, numComponents);
+  toneMapper(img_in, width, height, numComponents);
   unsigned char *img_out = new unsigned char [width*height*numComponents];
   applyFunctionOnAllPixelsPPMFromPFM(img_in, img_out, width, height, numComponents, func);
   WritePNM(image_out, width, height, numComponents, img_out);
@@ -203,7 +229,7 @@ void reflectanceCircleAndSavePFM(const char *image_out)
   {
     for(unsigned int j = 0; j < width; ++j)
     {
-      normal = getSurfaceNormal(getX(j), getY(i));
+      normal = getSurfaceNormal(getX(j), -getY(i));
       r = getReflectanceVector(normal, v);
       for(unsigned int k = 0; k < numComponents; ++k)
       {
@@ -255,6 +281,8 @@ void mapLatLongToSphere(const char* reflectance, const char* latLongMap,
       }
     }
   }
+  toneMapper(img_out, widthRef, heightRef, numComponentsRef);
+  //applyFunctionOnAllPixelsPFMSingle(img_out, img_out, widthRef, heightRef, numComponentsRef, exposureGammaPFM);
 
   WritePFM(image_out, widthRef, heightRef, numComponentsRef, img_out);
   delete img_out;

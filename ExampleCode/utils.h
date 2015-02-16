@@ -9,9 +9,8 @@
 #define LOW_IGNORE_THRESH 0.005
 #define HIGH_IGNORE_THRESH 0.920
 #define TWO_STOP 4
-#define EXPOSUREFACTOR 10
-#define GAMMA 2.2
-#define N 10
+#define GAMMA 1.5
+#define N 2
 #define RADIUS 255
 #define DIAMETER 511
 #define DIMENSION 3
@@ -29,12 +28,13 @@ float getY(int height);
 float w(float x);
 
 vector<float> getSurfaceNormal(float x, float y);
-vector<float> getReflectanceVector(vector<float> normal, vector<float> v);
+vector<float> getReflectanceVector(vector<float>& normal, vector<float>& v);
 float findMaxIntensity(float* image_in, unsigned int width, unsigned int height, unsigned int numComponents);
 
 // Tone Maps a PFM image into range 0-1
 void toneMapper(float* image_in, unsigned int width, unsigned int height, unsigned int numComponents);
 
+char doNothing(float value);
 void gammaFunc(float gamma, float* image_in, unsigned int width, unsigned int height, unsigned int numComponents);
 
 void NExposureScale(int n, float* image_in, unsigned int width, unsigned int height, unsigned int numComponents);
